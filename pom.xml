@@ -97,7 +97,9 @@
                 <version>2.43.0</version>
                 <configuration>
                     <java>
-                        <googleJavaFormat>1.17.0</googleJavaFormat>
+                        <googleJavaFormat>
+                            <version>1.17.0</version>
+                        </googleJavaFormat>
                         <target>src/main/java/**/*.java</target>
                     </java>
                 </configuration>
