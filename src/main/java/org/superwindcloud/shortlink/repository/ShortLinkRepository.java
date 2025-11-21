@@ -11,4 +11,5 @@ public interface ShortLinkRepository extends JpaRepository<ShortLink, Long> {
     Optional<ShortLink> findByShortCode(String shortCode);
     boolean existsByShortCode(String shortCode);
     boolean existsByOriginalUrl(String originalUrl);
+    Optional<ShortLink> findByOriginalUrl(String originalUrl);
 }

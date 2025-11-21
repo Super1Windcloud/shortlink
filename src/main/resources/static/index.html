@@ -3,54 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortLink - URL Shortener</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔗</text></svg>">
+    <title>ShortLink - Retro</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #f39c12;
+            --primary-hover: #f1c40f;
+            --scanline: rgba(255, 255, 255, 0.04);
+            --bg-dark: #0b0c10;
+            --card-bg: rgba(15, 18, 31, 0.9);
+            --text-color: #e8e6ff;
+            --accent: #6effe8;
+            --border-radius: 0.75rem;
+            --shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+        }
+
         body {
-            background-color: #f8f9fa;
+            background: radial-gradient(circle at 20% 20%, rgba(108, 92, 231, 0.35), transparent 35%),
+                        radial-gradient(circle at 80% 10%, rgba(241, 196, 15, 0.25), transparent 35%),
+                        radial-gradient(circle at 70% 80%, rgba(110, 255, 232, 0.25), transparent 30%),
+                        var(--bg-dark);
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--text-color);
+            position: relative;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(transparent 50%, var(--scanline) 50%);
+            background-size: 100% 3px;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 800px;
+        }
+
         .card {
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-            border: 1px solid rgba(0, 0, 0, 0.125);
+            box-shadow: var(--shadow);
+            border: none;
+            border-radius: var(--border-radius);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden; /* Ensures content respects the border radius */
+            background: linear-gradient(145deg, rgba(35, 40, 60, 0.95), rgba(20, 24, 40, 0.9));
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        .title-container {
+             animation: fadeInUp 0.8s ease-out;
+        }
+
+        .main-card-animation {
+            animation: fadeInUp 0.8s ease-out 0.2s;
+            animation-fill-mode: backwards; /* Start animation even if delayed */
+        }
+
+        .how-to-card-animation {
+             animation: fadeInUp 0.8s ease-out 0.4s;
+             animation-fill-mode: backwards;
+        }
+
+        h1.title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.9rem;
+            color: var(--accent);
+            text-shadow: 0 0 18px rgba(110, 255, 232, 0.8), 0 0 4px rgba(0,0,0,0.6);
+        }
+
         .result-container {
-            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            display: none; /* Keep hidden by default */
         }
+        
+        .result-container.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         .short-url {
             word-break: break-all;
             font-weight: 500;
+            color: var(--accent);
         }
-        .btn-shorten {
-            background-color: #4e73df;
-            border-color: #4e73df;
+
+        .btn-primary {
+            background: linear-gradient(90deg, #f39c12, #f1c40f);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #0b0c10;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.75rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .btn-shorten:hover {
-            background-color: #2e59d9;
-            border-color: #2e59d9;
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(243, 156, 18, 0.35);
+        }
+        
+        .spinner-container {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: none;
+        }
+
+        .spinner-container.show {
+            display: block;
+            opacity: 1;
+        }
+
+        .form-control:focus {
+            box-shadow: 0 0 0 0.25rem rgba(243, 156, 18, 0.2);
+            border-color: var(--primary-color);
+        }
+
+        label {
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .card-header {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--accent);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <div class="container mt-5">
         <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="text-center mb-5">
-                    <h1 class="text-primary">ShortLink</h1>
-                    <p class="lead">Convert long URLs to short, shareable links</p>
+            <div class="col-md-10">
+                <div class="text-center mb-5 title-container">
+                    <h1 class="title">ShortLink</h1>
+                    <p class="lead text-muted">Convert long URLs to short, shareable links</p>
                 </div>
                 
-                <div class="card">
+                <div class="card main-card-animation">
                     <div class="card-body p-4">
                         <form id="shortenForm">
                             <div class="mb-3">
-                                <label for="longUrl" class="form-label">Enter Long URL</label>
+                                <label for="longUrl" class="form-label fw-medium">Enter Long URL</label>
                                 <input type="url" class="form-control" id="longUrl" placeholder="https://example.com/very/long/url/here" required>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-shorten w-100">Create Short Link</button>
+                            <button type="submit" class="btn btn-primary w-100 py-2">Create Short Link</button>
                         </form>
                         
-                        <div id="loading" class="text-center mt-3" style="display: none;">
+                        <div id="loading" class="spinner-container text-center mt-3">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
@@ -58,32 +192,33 @@
                         
                         <div id="result" class="result-container mt-3">
                             <div class="alert alert-success">
-                                <h5>Short Link Created Successfully!</h5>
-                                <p class="mb-1">Original URL: <span id="originalUrl" class="text-muted"></span></p>
-                                <p class="mb-1">Short URL: <a id="shortUrl" class="short-url" target="_blank"></a></p>
+                                <h5 class="alert-heading">Short Link Created!</h5>
+                                <p class="mb-1"><strong>Original:</strong> <span id="originalUrl" class="text-muted" style="word-break: break-all;"></span></p>
+                                <hr>
+                                <p class="mb-2"><strong>Short URL:</strong> <a id="shortUrl" class="short-url" target="_blank"></a></p>
                                 <button id="copyBtn" class="btn btn-sm btn-outline-primary">Copy to Clipboard</button>
                             </div>
                         </div>
                         
                         <div id="error" class="result-container mt-3">
                             <div class="alert alert-danger">
-                                <h5>Error!</h5>
+                                <h5 class="alert-heading">Error!</h5>
                                 <p id="errorMessage"></p>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card mt-4">
+                <div class="card mt-4 how-to-card-animation">
                     <div class="card-header">
-                        <h5>How to Use</h5>
+                        <h5 class="mb-0">How to Use</h5>
                     </div>
                     <div class="card-body">
-                        <ol>
-                            <li>Enter a long URL in the input field above</li>
-                            <li>Click "Create Short Link" button</li>
-                            <li>Your shortened URL will be generated instantly</li>
-                            <li>Click "Copy to Clipboard" to copy the short URL</li>
+                        <ol class="mb-0">
+                            <li>Enter a long URL in the input field above.</li>
+                            <li>Click the "Create Short Link" button.</li>
+                            <li>Your shortened URL will be generated instantly.</li>
+                            <li>Use the "Copy" button to share your new link.</li>
                         </ol>
                     </div>
                 </div>
@@ -93,86 +228,94 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.getElementById('shortenForm').addEventListener('submit', async function(e) {
+        const shortenForm = document.getElementById('shortenForm');
+        const longUrlInput = document.getElementById('longUrl');
+        const loadingElement = document.getElementById('loading');
+        const resultElement = document.getElementById('result');
+        const errorElement = document.getElementById('error');
+        const copyBtn = document.getElementById('copyBtn');
+
+        shortenForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const longUrl = document.getElementById('longUrl').value.trim();
-            const loadingElement = document.getElementById('loading');
-            const resultElement = document.getElementById('result');
-            const errorElement = document.getElementById('error');
+            const longUrl = longUrlInput.value.trim();
             
             if (!longUrl) {
                 showError('Please enter a URL');
                 return;
             }
             
-            // Validate URL format
             try {
                 new URL(longUrl);
-            } catch (e) {
+            } catch (err) {
                 showError('Please enter a valid URL (e.g., https://example.com)');
                 return;
             }
             
-            // Show loading, hide results
-            loadingElement.style.display = 'block';
-            resultElement.style.display = 'none';
-            errorElement.style.display = 'none';
+            showLoading();
             
             try {
                 const response = await fetch('/api/shorten', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: longUrl })
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Show success result
-                    const protocol = window.location.protocol;
-                    const host = window.location.host;
-                    const shortUrl = `${protocol}//${host}${data.shortUrl}`;
-                    
-                    document.getElementById('originalUrl').textContent = longUrl;
-                    document.getElementById('shortUrl').textContent = shortUrl;
-                    document.getElementById('shortUrl').href = shortUrl;
-                    
-                    resultElement.style.display = 'block';
-                    errorElement.style.display = 'none';
+                    const fullShortUrl = `${window.location.protocol}//${window.location.host}${data.shortUrl}`;
+                    showResult(longUrl, fullShortUrl);
                 } else {
-                    showError(data.error || 'Failed to create short link');
+                    showError(data.error || 'Failed to create short link.');
                 }
             } catch (error) {
                 showError('Network error: ' + error.message);
             } finally {
-                loadingElement.style.display = 'none';
+                hideLoading();
             }
         });
         
-        document.getElementById('copyBtn').addEventListener('click', function() {
-            const shortUrlElement = document.getElementById('shortUrl');
-            const textArea = document.createElement('textarea');
-            textArea.value = shortUrlElement.textContent;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            
-            // Show feedback
-            const originalText = this.textContent;
-            this.textContent = 'Copied!';
-            setTimeout(() => {
-                this.textContent = originalText;
-            }, 2000);
+        copyBtn.addEventListener('click', function() {
+            const shortUrl = document.getElementById('shortUrl').href;
+            navigator.clipboard.writeText(shortUrl).then(() => {
+                const originalText = this.textContent;
+                this.textContent = 'Copied!';
+                this.classList.add('btn-success');
+                this.classList.remove('btn-outline-primary');
+                setTimeout(() => {
+                    this.textContent = originalText;
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-outline-primary');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
         });
         
+        function showLoading() {
+            resultElement.classList.remove('show');
+            errorElement.classList.remove('show');
+            loadingElement.classList.add('show');
+        }
+
+        function hideLoading() {
+            loadingElement.classList.remove('show');
+        }
+
+        function showResult(originalUrl, shortUrl) {
+            document.getElementById('originalUrl').textContent = originalUrl;
+            const shortUrlLink = document.getElementById('shortUrl');
+            shortUrlLink.textContent = shortUrl;
+            shortUrlLink.href = shortUrl;
+            errorElement.classList.remove('show');
+            resultElement.classList.add('show');
+        }
+
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
-            document.getElementById('result').style.display = 'none';
-            document.getElementById('error').style.display = 'block';
+            resultElement.classList.remove('show');
+            errorElement.classList.add('show');
         }
     </script>
 </body>

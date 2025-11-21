@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短链接高并发压测面板</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.6);
+        }
+        .card h5 {
+            color: #93c5fd;
+        }
+        label {
+            font-weight: 500;
+            color: #cbd5f5;
+        }
+        input, select, textarea {
+            background: rgba(15,23,42,0.7) !important;
+            color: #e2e8f0 !important;
+            border-color: rgba(148, 163, 184, 0.3) !important;
+        }
+        input:focus, textarea:focus {
+            box-shadow: 0 0 0 0.2rem rgba(59,130,246,0.4) !important;
+        }
+        .progress {
+            height: 0.8rem;
+            background: rgba(148,163,184,0.2);
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #38bdf8, #6366f1);
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        .stat-label {
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+        }
+        .log-panel {
+            max-height: 220px;
+            overflow-y: auto;
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 0.85rem;
+            background: #0f172a;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+        }
+        .badge {
+            font-size: 0.75rem;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.35rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .status-pill.running {
+            background: rgba(34,197,94,0.15);
+            color: #34d399;
+        }
+        .status-pill.idle {
+            background: rgba(148,163,184,0.15);
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+<div class="container py-5">
+    <div class="mb-4 text-center">
+        <h1 class="fw-bold text-light">短链接系统并发压测面板</h1>
+        <p class="text-secondary mb-0">配置参数后即可在浏览器内模拟大量并发创建请求，无需额外工具。</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">压测参数</h5>
+                        <span id="statusPill" class="status-pill idle">空闲</span>
+                    </div>
+                    <form id="loadTestForm" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="apiEndpoint" class="form-label">API 地址</label>
+                            <input type="text" class="form-control" id="apiEndpoint" value="/api/shorten" required>
+                            <div class="form-text text-secondary">默认指向当前应用的创建接口，可替换为完整 URL。</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="baseUrl" class="form-label">长链接前缀</label>
+                            <input type="text" class="form-control" id="baseUrl" value="https://example.com/resource" required>
+                            <div class="form-text text-secondary">每个请求会拼接随机参数，确保生成不同短链。</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="totalRequests" class="form-label">总请求数</label>
+                                <input type="number" class="form-control" id="totalRequests" min="1" max="20000" value="500" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="concurrency" class="form-label">并发数</label>
+                                <input type="number" class="form-control" id="concurrency" min="1" max="1000" value="50" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="timeout" class="form-label">单请求超时 (秒)</label>
+                            <input type="number" class="form-control" id="timeout" min="1" max="60" value="10" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">备注 / 批次标识（可选）</label>
+                            <input type="text" class="form-control" id="notes" placeholder="例如：release-2024.11.20">
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary btn-lg" type="submit" id="startBtn">开始压测</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">实时统计</h5>
+                        <span class="badge text-bg-dark" id="notesBadge">未开始</span>
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <p class="text-secondary mb-4" id="progressText">0 / 0 (0%)</p>
+                    <div class="row text-center gy-3">
+                        <div class="col-6 col-md-3">
+                            <div class="stat-value text-success" id="successCount">0</div>
+                            <div class="stat-label">成功</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-value text-danger" id="failureCount">0</div>
+                            <div class="stat-label">失败</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-value" id="avgLatency">0 ms</div>
+                            <div class="stat-label">平均耗时</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-value" id="throughput">0 rps</div>
+                            <div class="stat-label">吞吐量</div>
+                        </div>
+                    </div>
+                    <div class="row text-center gy-3 mt-2">
+                        <div class="col-6 col-md-4">
+                            <div class="stat-value" id="minLatency">-</div>
+                            <div class="stat-label">最短耗时</div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <div class="stat-value" id="maxLatency">-</div>
+                            <div class="stat-label">最长耗时</div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="stat-value" id="duration">0 s</div>
+                            <div class="stat-label">累计时间</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">请求日志（最近 20 条）</h5>
+                        <button class="btn btn-sm btn-outline-light" id="clearLogBtn">清空</button>
+                    </div>
+                    <div class="log-panel" id="logPanel"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('loadTestForm');
+    const startBtn = document.getElementById('startBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const successCountEl = document.getElementById('successCount');
+    const failureCountEl = document.getElementById('failureCount');
+    const avgLatencyEl = document.getElementById('avgLatency');
+    const minLatencyEl = document.getElementById('minLatency');
+    const maxLatencyEl = document.getElementById('maxLatency');
+    const throughputEl = document.getElementById('throughput');
+    const durationEl = document.getElementById('duration');
+    const statusPill = document.getElementById('statusPill');
+    const notesBadge = document.getElementById('notesBadge');
+    const logPanel = document.getElementById('logPanel');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+
+    clearLogBtn.addEventListener('click', () => logPanel.innerHTML = '');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const endpoint = document.getElementById('apiEndpoint').value.trim();
+        const baseUrl = document.getElementById('baseUrl').value.trim();
+        const totalRequests = Number(document.getElementById('totalRequests').value);
+        const concurrency = Math.min(Number(document.getElementById('concurrency').value), totalRequests);
+        const timeout = Number(document.getElementById('timeout').value) * 1000;
+        const notes = document.getElementById('notes').value.trim() || '未命名批次';
+
+        if (!endpoint || !baseUrl) {
+            alert('请填写完整参数');
+            return;
+        }
+
+        resetStats(totalRequests, notes);
+        toggleRunningState(true);
+
+        const controller = new AbortController();
+        const allLatencies = [];
+        let totalLatency = 0;
+        let minLatency = Number.POSITIVE_INFINITY;
+        let maxLatency = 0;
+        let successCount = 0;
+        let failureCount = 0;
+        let completed = 0;
+        const startTime = performance.now();
+        const tasks = Array.from({ length: totalRequests }, (_, idx) => idx);
+
+        async function worker(workerId) {
+            while (tasks.length > 0) {
+                const taskId = tasks.shift();
+                if (taskId === undefined) {
+                    break;
+                }
+                const payload = { url: `${baseUrl}?load=${Date.now()}-${workerId}-${taskId}` };
+                const singleStart = performance.now();
+                let status = 'success';
+                let message = '';
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: AbortSignal.timeout(timeout)
+                    });
+                    const elapsed = performance.now() - singleStart;
+                    totalLatency += elapsed;
+                    allLatencies.push(elapsed);
+                    minLatency = Math.min(minLatency, elapsed);
+                    maxLatency = Math.max(maxLatency, elapsed);
+                    if (response.ok) {
+                        successCount++;
+                        const data = await response.json();
+                        message = `✅ ${taskId} -> ${data.shortCode || 'unknown'} (${elapsed.toFixed(1)} ms)`;
+                    } else {
+                        failureCount++;
+                        message = `❌ ${taskId} -> HTTP ${response.status} (${elapsed.toFixed(1)} ms)`;
+                        status = 'error';
+                    }
+                } catch (err) {
+                    const elapsed = performance.now() - singleStart;
+                    totalLatency += elapsed;
+                    allLatencies.push(elapsed);
+                    minLatency = Math.min(minLatency, elapsed);
+                    maxLatency = Math.max(maxLatency, elapsed);
+                    failureCount++;
+                    message = `⚠️ ${taskId} -> ${err.message} (${elapsed.toFixed(1)} ms)`;
+                    status = 'error';
+                } finally {
+                    completed++;
+                    updateProgress(completed, totalRequests);
+                    updateStatsDisplay({
+                        successCount,
+                        failureCount,
+                        minLatency,
+                        maxLatency,
+                        avgLatency: totalLatency / completed,
+                        throughput: completed / ((performance.now() - startTime) / 1000),
+                        durationMs: performance.now() - startTime
+                    });
+                    appendLog(message, status);
+                }
+            }
+        }
+
+        try {
+            await Promise.all(
+                Array.from({ length: concurrency }, (_, idx) => worker(idx))
+            );
+        } finally {
+            controller.abort();
+            toggleRunningState(false);
+        }
+    });
+
+    function resetStats(total, notes) {
+        progressBar.style.width = '0%';
+        progressText.textContent = `0 / ${total} (0%)`;
+        successCountEl.textContent = '0';
+        failureCountEl.textContent = '0';
+        avgLatencyEl.textContent = '0 ms';
+        minLatencyEl.textContent = '-';
+        maxLatencyEl.textContent = '-';
+        throughputEl.textContent = '0 rps';
+        durationEl.textContent = '0 s';
+        notesBadge.textContent = notes;
+    }
+
+    function toggleRunningState(isRunning) {
+        startBtn.disabled = isRunning;
+        startBtn.textContent = isRunning ? '压测进行中...' : '开始压测';
+        statusPill.textContent = isRunning ? '运行中' : '空闲';
+        statusPill.classList.toggle('running', isRunning);
+        statusPill.classList.toggle('idle', !isRunning);
+    }
+
+    function updateProgress(done, total) {
+        const percent = total === 0 ? 0 : Math.floor((done / total) * 100);
+        progressBar.style.width = percent + '%';
+        progressBar.setAttribute('aria-valuenow', percent);
+        progressText.textContent = `${done} / ${total} (${percent}%)`;
+    }
+
+    function updateStatsDisplay({ successCount, failureCount, minLatency, maxLatency, avgLatency, throughput, durationMs }) {
+        successCountEl.textContent = successCount;
+        failureCountEl.textContent = failureCount;
+        avgLatencyEl.textContent = isFinite(avgLatency) ? `${avgLatency.toFixed(1)} ms` : '-';
+        minLatencyEl.textContent = isFinite(minLatency) ? `${minLatency.toFixed(1)} ms` : '-';
+        maxLatencyEl.textContent = isFinite(maxLatency) ? `${maxLatency.toFixed(1)} ms` : '-';
+        throughputEl.textContent = isFinite(throughput) ? `${throughput.toFixed(1)} rps` : '0 rps';
+        durationEl.textContent = `${(durationMs / 1000).toFixed(1)} s`;
+    }
+
+    function appendLog(message, status) {
+        const entry = document.createElement('div');
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        entry.classList.add(status === 'error' ? 'text-danger' : 'text-success');
+        logPanel.prepend(entry);
+        while (logPanel.children.length > 20) {
+            logPanel.removeChild(logPanel.lastChild);
+        }
+    }
+</script>
+</body>
+</html>

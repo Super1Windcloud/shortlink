@@ -2,11 +2,17 @@ package org.superwindcloud.shortlink.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "short_links")
+@Table(name = "short_links",
+       indexes = {
+               @Index(name = "idx_short_links_short_code", columnList = "short_code", unique = true),
+               @Index(name = "idx_short_links_original_url", columnList = "original_url", unique = true),
+               @Index(name = "idx_short_links_created_at", columnList = "created_at")
+       })
 public class ShortLink {
 
     @Id
@@ -14,7 +20,8 @@ public class ShortLink {
     private Long id;
 
     @NotBlank
-    @Column(name = "original_url", nullable = false)
+    @Size(max = 2048)
+    @Column(name = "original_url", nullable = false, unique = true, length = 2048)
     private String originalUrl;
 
     @NotBlank

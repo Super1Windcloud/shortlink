@@ -1,6 +1,5 @@
 package org.superwindcloud.shortlink.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,17 +11,22 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api")
 public class ShortLinkController {
 
-    @Autowired
-    private ShortLinkService shortLinkService;
+    private final ShortLinkService shortLinkService;
+    private static final int MAX_URL_LENGTH = 2048;
+
+    public ShortLinkController(ShortLinkService shortLinkService) {
+        this.shortLinkService = shortLinkService;
+    }
 
     /**
      * Creates a short link from the original URL
      */
-    @PostMapping("/shorten")
-    public ResponseEntity<Map<String, String>> createShortLink(@RequestBody Map<String, String> request) {
+    @PostMapping("/api/shorten")
+    public ResponseEntity<Map<String, String>> createShortLink(@RequestBody Map<String, String> request, 
+                                                              @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor,
+                                                              @RequestHeader(value = "X-Real-IP", required = false) String realIp) {
         String originalUrl = request.get("url");
         
         if (originalUrl == null || originalUrl.isEmpty()) {
@@ -35,6 +39,11 @@ public class ShortLinkController {
         if (!isValidUrl(originalUrl)) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Invalid URL format");
+            return ResponseEntity.badRequest().body(error);
+        }
+        if (originalUrl.length() > MAX_URL_LENGTH) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "URL is too long (max " + MAX_URL_LENGTH + " characters)");
             return ResponseEntity.badRequest().body(error);
         }
 
@@ -52,7 +61,9 @@ public class ShortLinkController {
      * Redirects to the original URL based on the short code
      */
     @GetMapping("/r/{shortCode}")
-    public ResponseEntity<?> redirectToOriginalUrl(@PathVariable String shortCode) {
+    public ResponseEntity<?> redirectToOriginalUrl(@PathVariable String shortCode,
+                                                   @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor,
+                                                   @RequestHeader(value = "X-Real-IP", required = false) String realIp) {
         Optional<ShortLink> shortLink = shortLinkService.findAndIncrementClickCount(shortCode);
         
         if (shortLink.isPresent()) {
@@ -69,7 +80,7 @@ public class ShortLinkController {
     /**
      * Gets short link details by short code
      */
-    @GetMapping("/info/{shortCode}")
+    @GetMapping("/api/info/{shortCode}")
     public ResponseEntity<?> getShortLinkInfo(@PathVariable String shortCode) {
         Optional<ShortLink> shortLink = shortLinkService.findByShortCode(shortCode);
         
