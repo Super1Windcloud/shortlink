@@ -8,8 +8,7 @@ import org.springframework.cache.annotation.EnableCaching;
 @EnableCaching
 public class ShortlinkApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(ShortlinkApplication.class, args);
-    }
-
+  public static void main(String[] args) {
+    SpringApplication.run(ShortlinkApplication.class, args);
+  }
 }

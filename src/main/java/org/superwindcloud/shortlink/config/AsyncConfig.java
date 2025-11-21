@@ -6,5 +6,5 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @Configuration
 @EnableAsync
 public class AsyncConfig {
-    // 异步配置类
+  // 异步配置类
 }

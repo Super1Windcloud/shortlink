@@ -7,9 +7,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Override
-    public void addViewControllers(ViewControllerRegistry registry) {
-        // This allows access to the root path and frontend
-        registry.addViewController("/").setViewName("forward:/index.html");
-    }
+  @Override
+  public void addViewControllers(ViewControllerRegistry registry) {
+    // This allows access to the root path and frontend
+    registry.addViewController("/").setViewName("forward:/index.html");
+  }
 }
