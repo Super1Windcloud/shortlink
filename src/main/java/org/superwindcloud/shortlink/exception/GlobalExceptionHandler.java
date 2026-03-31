@@ -1,10 +1,12 @@
 package org.superwindcloud.shortlink.exception;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -15,24 +17,30 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(
       DataIntegrityViolationException e) {
-    Map<String, String> error = new HashMap<>();
-    error.put(
-        "error", "Invalid input or constraint violation: " + e.getMostSpecificCause().getMessage());
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(Map.of("error", "Invalid input or constraint violation"));
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<Map<String, Object>> handleMethodArgumentNotValid(
+      MethodArgumentNotValidException e) {
+    Map<String, String> fieldErrors = new LinkedHashMap<>();
+    for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {
+      fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+    }
+    return ResponseEntity.badRequest()
+        .body(Map.of("error", "Validation failed", "fields", fieldErrors));
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, String>> handleGeneralException(Exception e) {
-    Map<String, String> error = new HashMap<>();
-    error.put("error", "An error occurred: " + e.getMessage());
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(Map.of("error", "Internal server error"));
   }
 
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<Map<String, String>> handleResourceNotFoundException(
       NoResourceFoundException e) {
-    Map<String, String> error = new HashMap<>();
-    error.put("error", "Resource not found: " + e.getMessage());
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Resource not found"));
   }
 }

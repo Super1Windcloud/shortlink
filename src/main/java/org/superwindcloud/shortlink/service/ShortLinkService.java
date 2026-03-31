@@ -1,14 +1,14 @@
 package org.superwindcloud.shortlink.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.superwindcloud.shortlink.config.CacheConfig;
@@ -30,7 +30,6 @@ public class ShortLinkService {
   private static final int MAX_GENERATION_ATTEMPTS = 10;
   private static final String LOCK_PREFIX = "shortlink:lock:";
 
-  @Autowired
   public ShortLinkService(
       ShortLinkRepository shortLinkRepository,
       CacheManager cacheManager,
@@ -44,7 +43,7 @@ public class ShortLinkService {
   /** Creates a short link from the original URL */
   @Transactional
   public ShortLink createShortLink(String originalUrl) {
-    String lockKey = LOCK_PREFIX + "url:" + originalUrl.hashCode();
+    String lockKey = LOCK_PREFIX + "url:" + hashForLock(originalUrl);
     String lockValue = UUID.randomUUID().toString();
 
     // 尝试获取分布式锁
@@ -96,27 +95,8 @@ public class ShortLinkService {
     }
 
     ShortLink link = existing.get();
-    // 异步更新点击次数，避免阻塞响应
-    updateClickCountAsync(link);
+    incrementClickCount(link);
     return Optional.of(link);
-  }
-
-  /** 异步更新点击次数 */
-  @Async
-  public CompletableFuture<Void> updateClickCountAsync(ShortLink shortLink) {
-    try {
-      ShortLink link = new ShortLink(shortLink.getOriginalUrl(), shortLink.getShortCode());
-      link.setId(shortLink.getId());
-      link.setClickCount(shortLink.getClickCount() + 1);
-      link.setCreatedAt(shortLink.getCreatedAt());
-
-      ShortLink updated = shortLinkRepository.save(link);
-      cacheShortLink(updated);
-    } catch (Exception e) {
-      // 记录错误但不抛出异常，以免影响主流程
-      System.err.println("Error updating click count asynchronously: " + e.getMessage());
-    }
-    return CompletableFuture.completedFuture(null);
   }
 
   /** Finds a short link by its short code without incrementing click count */
@@ -138,6 +118,19 @@ public class ShortLinkService {
     }
 
     return shortCode.toString();
+  }
+
+  private void incrementClickCount(ShortLink shortLink) {
+    if (shortLink.getId() == null) {
+      return;
+    }
+    int updatedRows = shortLinkRepository.incrementClickCountById(shortLink.getId());
+    if (updatedRows > 0) {
+      long updatedClickCount =
+          shortLink.getClickCount() == null ? 1L : shortLink.getClickCount() + 1;
+      shortLink.setClickCount(updatedClickCount);
+      cacheShortLink(shortLink);
+    }
   }
 
   private Optional<ShortLink> findExistingShortLink(String originalUrl) {
@@ -166,6 +159,20 @@ public class ShortLinkService {
     }
     if (shortCodeCache != null) {
       shortCodeCache.put(shortLink.getShortCode(), shortLink);
+    }
+  }
+
+  private String hashForLock(String value) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+      StringBuilder builder = new StringBuilder(hash.length * 2);
+      for (byte b : hash) {
+        builder.append(String.format("%02x", b));
+      }
+      return builder.toString();
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is not available", e);
     }
   }
 }
