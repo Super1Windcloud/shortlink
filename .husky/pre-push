@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -e
 
-# Format and lint (style) before pushing
-mvn -DskipTests spotless:check
+# Run formatting and static analysis before pushing
+./mvnw -DskipTests verify

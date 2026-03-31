@@ -4,6 +4,9 @@
 
 ## 快速开始
 
+### 0. 环境要求
+- JDK 21 或更高版本
+
 ### 1. 启动依赖
 - PostgreSQL（默认账号/库）：`shortlink` / `change-me` / `shortlink`
 - Redis：默认无密码，端口 `6379`
@@ -27,9 +30,10 @@ mvn spring-boot:run    # 或直接运行 ShortlinkApplication
 - 浏览器压测面板：`http://localhost:33333/load-test.html`
 
 ### 4. 预推送检查
-项目使用 husky + Spotless：
-- 钩子：`.husky/pre-push` 执行 `mvn -DskipTests spotless:check`
-- 单独运行：`mvn -DskipTests spotless:apply`（自动格式化）
+项目使用 husky + Maven 校验链路：
+- 钩子：`.husky/pre-push` 执行 `./mvnw -DskipTests verify`
+- 自动格式化：`./mvnw -DskipTests spotless:apply`
+- 单独执行静态分析：`./mvnw -DskipTests spotbugs:check`
 
 ## 压测提示
 - 浏览器面板受同域连接数限制，想达到高并发/QPS 请用命令行工具（如 wrk2、vegeta）并逐步升压。

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Suppress Spring bean constructor injection false positives for mutable collaborators. -->
+    <Match>
+        <Class name="org.superwindcloud.shortlink.config.StartupDependencyVerifier"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="org.superwindcloud.shortlink.util.DistributedLock"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="org.superwindcloud.shortlink.util.RateLimiter"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>
